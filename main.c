@@ -6,41 +6,95 @@
 /*   By: chabrune <charlesbrunet51220@gmail.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/19 16:08:19 by chabrune          #+#    #+#             */
-/*   Updated: 2023/02/19 16:25:11 by chabrune         ###   ########.fr       */
+/*   Updated: 2023/02/22 17:36:23 by chabrune         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-// Routine du processus fils :
-void	routine_fils(pid_t pid, int *nb)
+void	pipex(int fd1, int fd2, char **argv, char **envp)
 {
-	printf("Fils : Coucou! Je suis le fils. PID recu de fork = %d\n", pid);
-	printf("Fils : Le nombre est %d\n", *nb);
+	int pid;
+	int fd[2];
+	pipe(fd);
+	pid = fork();
+	if(pid == - 1)
+		return(1);
+	else if(pid == 0)
+		child_process(fd1, fd, envp, argv);
+	else
+		parent_process(fd2,fd, envp, argv);
 }
 
-// Routine du processus père :
-void	routine_pere(pid_t pid, int *nb)
+int	child_process(int fd1, int *fd, char **envp, char **argv)
 {
-	printf("Pere : Je suis le pere. PID recu de fork = %d\n", pid);
-	printf("Pere : Le nombre est %d\n", *nb);
-	*nb *= 2;
-	printf("Pere : Le nombre modifie est %d\n", *nb);
+	if(dup2(fd1, STDIN_FILENO) == -1)
+		return(2);
+	if(dup2(fd[1], STDOUT_FILENO) == -1)
+		return(3);
+	close(fd[1]);
+	close(fd1);
+	hello(envp, argv, 2);
+	return(0);
 }
 
-int	main(void)
+int	parent_process(int fd2, int *fd, char **envp, char **argv)
 {
-	pid_t	pid; // Stocke le retour de fork
-	int	nb;  // Stocke un entier
+	int status;
+	waitpid(-1, &status, 0);
+	if(dup2(fd2, STDOUT_FILENO) == -1)
+		return(4);
+	if(dup2(fd[0], STDIN_FILENO) == -1)
+		return(5);
+	close(fd[0]);
+	close(fd2);
+	hello(envp, argv, 3);
+	return(0);
+}
 
-	nb = 42;
-	printf("Avant fork, le nombre est %d\n", nb);
-	pid = fork(); // Création du processus fils
-	if (pid == -1)
-		return (EXIT_FAILURE);
-	else if (pid == 0) // Retour de fork est 0, on est dans le fils
-		routine_fils(pid, &nb);
-	else if (pid > 0) // Retour de fork > 0, on est dans le père
-		routine_pere(pid, &nb);
-	return (EXIT_SUCCESS);
+char	*find_path(char **envp)
+{
+	int i;
+
+	i = -1;
+	while(envp[++i])
+	{
+		if(strncmp(envp[i], "PATH", 4) == 0)
+			return(envp[i]);
+	}
+	return(0);
+}
+
+int	hello(char **envp, char **argv, int ar)
+{
+	char *pathenv;
+	char **mypath;
+	char **cmdargs;
+	int i;
+
+	i = -1;
+	cmdargs = ft_split(argv[ar], ' ');
+	pathenv = find_path(envp);
+	mypath = ft_split(pathenv, ':');
+	while(mypath[++i])
+	{
+		char *cmd = ft_strjoin(mypath[i], argv[2]);
+		execve(cmd, cmdargs, envp);
+	    free(cmd);
+	}
+	return (EXIT_FAILURE);
+}
+
+int main(int argc, char **argv, char **envp)
+{
+	(void)argc;
+	int fd1;
+	int fd2;
+
+	fd1 = open(argv[1], O_RDONLY);
+	fd2 = open(argv[4], O_CREAT | O_RDWR | O_TRUNC, 0644); // Create a file if it doesnt exit -- TRUNC == reset file a 0
+	if(fd1 < 0 || fd2 < 0)
+		return(1);
+	pipex(fd1, fd2, argv, envp);
+	return(0);
 }
