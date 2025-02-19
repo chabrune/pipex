@@ -31,17 +31,6 @@ Pipex simule le comportement de la commande shell `< file1 cmd1 | cmd2 > file2` 
 - Autres : `access`, `unlink`, `wait`, `waitpid`
 - Libft autorisée
 
-## 🌟 Bonus
-- Gestion de multiples pipes :
-```bash
-./pipex file1 cmd1 cmd2 cmd3 ... cmdn file2
-# Équivalent à : < file1 cmd1 | cmd2 | cmd3 ... | cmdn > file2
-```
-- Support de here_doc :
-```bash
-./pipex here_doc LIMITER cmd1 cmd2 file
-# Équivalent à : cmd1 << LIMITER | cmd2 >> file
-```
 
 ## ⚠️ Exigences
 - Gestion rigoureuse des erreurs
